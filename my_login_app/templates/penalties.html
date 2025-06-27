@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>نظام عقوبات الموظفين - العصر الذكي</title>
+    <!-- تضمين Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* تعريف الخط الأساسي للتطبيق */
+        body {
+            font-family: 'Cairo', sans-serif;
+            @apply bg-gray-100 text-gray-800; /* Default light mode colors */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Dark mode styles using Tailwind's `dark:` prefix or by adding a `dark` class to html/body */
+        html.dark {
+            --tw-bg-opacity: 1;
+            background-color: #0f172a; /* Slate 900 */
+            color: #f8fafc; /* Slate 50 */
+        }
+        html.dark .bg-white {
+            background-color: #1e293b; /* Slate 800 */
+        }
+        html.dark .text-gray-800 {
+            color: #f8fafc;
+        }
+        html.dark .text-gray-600 {
+            color: #cbd5e0; /* Slate 300 */
+        }
+        html.dark .border-gray-200 {
+            border-color: #334155; /* Slate 700 */
+        }
+        html.dark input, html.dark select {
+            background-color: #1e293b;
+            border-color: #334155;
+            color: #f8fafc;
+        }
+        html.dark table thead th {
+            background-color: rgba(59, 130, 246, 0.2); /* Blue 500 with opacity */
+        }
+        html.dark table tbody tr:nth-child(even) {
+            background-color: #1e293b; /* Darker even rows */
+        }
+        html.dark table tbody tr:hover {
+            background-color: #334155; /* Slate 700 on hover */
+        }
+        html.dark .empty-state p, html.dark .empty-state i {
+            color: #94a3b8; /* Slate 400 */
+        }
+        html.dark .total-row {
+            background-color: #334155 !important; /* Darker background for total row in dark mode */
+            color: #f8fafc !important; /* Lighter text for total row */
+            border-top-color: #60A5FA !important; /* Lighter border for total row */
+        }
+
+
+        /* Common styles for buttons and inputs */
+        .btn {
+            @apply px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition duration-300 ease-in-out transform hover:-translate-y-0.5 shadow-md;
+        }
+        .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700; }
+        .btn-success { @apply bg-emerald-500 text-white hover:bg-emerald-600; }
+        .btn-accent { @apply bg-amber-500 text-white hover:bg-amber-600; }
+        .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
+        .btn-outline { @apply bg-transparent border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white; }
+        
+        /* Loading Spinner */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            border: 4px solid rgba(59, 130, 246, 0.2);
+            border-top: 4px solid #3b82f6; /* Primary blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Flash message styles (consistent with other pages) */
+        .flash-messages {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 90%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .flash {
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            animation: fadeInOut 0.5s forwards;
+        }
+        .flash.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .flash.danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .flash.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        @keyframes fadeInOut {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Flash messages container -->
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-blue-400 p-6 shadow-lg rounded-b-3xl relative">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-white text-3xl font-bold text-shadow-md">
+                <i class="fas fa-balance-scale-right ml-2"></i> نظام عقوبات الموظفين
+            </h1>
+            <div class="flex space-x-4">
+                <!-- زر تبديل الوضع الليلي -->
+                <button onclick="toggleDarkMode()" class="bg-white bg-opacity-20 hover:bg-opacity-30 p-3 rounded-full text-white transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                    <i class="fas fa-moon" id="dark-mode-icon"></i>
+                </button>
+                <!-- زر تسجيل الخروج -->
+                <button onclick="logout()" class="bg-white bg-opacity-20 hover:bg-opacity-30 p-3 rounded-full text-white transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto p-6 md:p-10">
+        <div class="bg-white rounded-xl shadow-xl p-6 mb-6 border border-gray-200">
+            <div class="controls grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <button class="btn btn-primary" onclick="fetchData()">
+                    <i class="fas fa-sync-alt"></i> تحديث البيانات
+                </button>
+                <button class="btn btn-danger" onclick="clearTable()">
+                    <i class="fas fa-trash-alt"></i> مسح الكل
+                </button>
+                <button class="btn btn-success" onclick="downloadExcel()">
+                    <i class="fas fa-download"></i> تنزيل Excel
+                </button>
+                <button class="btn btn-primary" onclick="window.location.href='{{ url_for('dashboard') }}'">
+                    <i class="fas fa-arrow-right"></i> رجوع للوحة التحكم
+                </button>
+                
+                <select id="deptFilter" onchange="filterTable()" 
+                        class="p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 focus:ring-blue-500 focus:border-blue-500 col-span-1 md:col-span-2 lg:col-span-1">
+                    <option value="">كل الأقسام</option>
+                </select>
+                <input type="text" id="search" placeholder="بحث باسم الموظف أو سبب العقوبة..." oninput="filterTable()" 
+                       class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 focus:ring-blue-500 focus:border-blue-500 col-span-full md:col-span-2 lg:col-span-3"/>
+            </div>
+
+            <div class="table-container rounded-lg shadow-md border border-gray-200 overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-blue-50">
+                        <tr>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">اسم الموظف</th>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">القسم</th>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">نوع العقوبة</th>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">التاريخ</th>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">سبب العقوبة</th>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">المدير</th>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">ملاحظة الغرامة</th>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">قيمة الغرامة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody" class="bg-white divide-y divide-gray-200">
+                        <!-- Initial loading state -->
+                        <tr>
+                            <td colspan="8" class="text-center py-8">
+                                <div class="spinner mx-auto"></div>
+                                <p class="text-gray-500 mt-2">جاري تحميل البيانات...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot id="tfoot" class="bg-blue-600 text-white font-bold total-row">
+                        <!-- Total row will be rendered here by JS -->
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white p-4 text-center mt-auto">
+        <p>جميع الحقوق محفوظة &copy; <span id="year"></span> | نظام إدارة الموظفين - شركة العصر الذكي</p>
+    </footer>
+
+    <script>
+        // دالة لعرض الرسائل المخصصة (Flash Messages)
+        function displayCustomMessage(message, category = 'info') {
+            const flashContainer = document.querySelector('.flash-messages');
+            if (flashContainer) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `flash ${category}`;
+                messageDiv.textContent = message;
+                flashContainer.appendChild(messageDiv);
+                // إزالة الرسالة بعد 5 ثوانٍ
+                setTimeout(() => {
+                    messageDiv.remove();
+                }, 5000); 
+            }
+        }
+
+        // Dark Mode Toggle
+        const darkModeIcon = document.getElementById("dark-mode-icon");
+        // Apply dark mode preference on load
+        const savedDarkMode = localStorage.getItem("darkMode") === "true";
+        if (savedDarkMode) {
+            document.documentElement.classList.add("dark"); 
+            darkModeIcon.classList.remove("fa-moon");
+            darkModeIcon.classList.add("fa-sun");
+        } else {
+            darkModeIcon.classList.remove("fa-sun");
+            darkModeIcon.classList.add("fa-moon");
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle("dark");
+            localStorage.setItem("darkMode", isDark);
+            if (isDark) {
+                darkModeIcon.classList.remove("fa-moon");
+                darkModeIcon.classList.add("fa-sun");
+            } else {
+                darkModeIcon.classList.remove("fa-sun");
+                darkModeIcon.classList.add("fa-moon");
+            }
+        }
+
+        // Logout function
+        function logout() {
+            window.location.href = "{{ url_for('logout') }}";
+        }
+
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        let penaltiesData = [];
+
+        function showLoadingState() {
+            document.getElementById('tbody').innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center py-8">
+                        <div class="spinner mx-auto"></div>
+                        <p class="text-gray-500 mt-2">جاري تحميل البيانات...</p>
+                    </td>
+                </tr>
+            `;
+            document.getElementById('tfoot').innerHTML = ''; // Clear total on load
+        }
+
+        function showEmptyOrErrorState(message, isError = false) {
+            document.getElementById('tbody').innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center py-8 text-gray-500">
+                        <i class="fas ${isError ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle'} text-3xl mb-3"></i>
+                        <p class="text-lg mb-4">${message}</p>
+                        <button class="btn btn-primary" onclick="fetchData()">
+                            <i class="fas fa-sync-alt"></i> المحاولة مرة أخرى
+                        </button>
+                        <button class="btn btn-outline" onclick="clearTable()">
+                            <i class="fas fa-times"></i> مسح الفلاتر
+                        </button>
+                    </td>
+                </tr>
+            `;
+            document.getElementById('tfoot').innerHTML = ''; // Clear total on empty/error state
+        }
+
+        // --- جلب البيانات من Google Apps Script ---
+        async function fetchData() {
+            showLoadingState();
+            try {
+                // *** تأكد أن هذا الرابط هو آخر رابط نشرته من Google Apps Script لبيانات العقوبات ***
+                const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzwtvelbl-c2Af2tV8LRz0F8xmLQtXIuUM0ZGcwMVw7T2wiu8epGqiw5kDN9z0AjOkWTw/exec?sheet=عقوبات';
+                const response = await fetch(SCRIPT_URL);
+
+                if (!response.ok) {
+                    throw new Error(`خطأ في الشبكة أو الخادم: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'خطأ غير معروف من السيرفر.');
+                }
+
+                penaltiesData = result.data;
+                populateDeptFilter();
+                renderTable(penaltiesData);
+                displayCustomMessage('تم تحديث البيانات بنجاح.', 'success');
+            } catch (error) {
+                console.error('خطأ في جلب البيانات:', error);
+                showEmptyOrErrorState(`فشل تحميل البيانات: ${error.message}.`, true);
+                displayCustomMessage(`فشل تحميل البيانات: ${error.message}.`, 'danger');
+            }
+        }
+
+        // --- معالجة البيانات وعرضها ---
+        function populateDeptFilter() {
+            // استخدام Set للحصول على الأقسام الفريدة وتصفية القيم الفارغة أو null
+            const departments = [...new Set(penaltiesData.map(record => record.القسم).filter(Boolean))].sort();
+            const departmentSelect = document.getElementById('deptFilter');
+            
+            departmentSelect.innerHTML = '<option value="">كل الأقسام</option>';
+
+            departments.forEach(dept => {
+                // تأكد أن القيم ليست فارغة قبل إضافتها
+                if (dept && dept !== '—') { // إضافة شرط لتجاهل '—' إذا كانت تستخدم لتمثيل القيم الفارغة
+                    departmentSelect.innerHTML += `<option value="${dept}">${dept}</option>`;
+                }
+            });
+        }
+
+        /**
+         * وظيفة لعرض مصفوفة من سجلات العقوبات في جسم الجدول (tbody)
+         * وحساب وعرض مجموع الغرامات في tfoot.
+         * @param {Array<Object>} records - مصفوفة كائنات العقوبات لعرضها.
+         */
+        function renderTable(records) {
+            const tbody = document.getElementById('tbody');
+            
+            if (!records || records.length === 0) {
+                showEmptyOrErrorState('لا توجد بيانات لعرضها حالياً.', false);
+                return;
+            }
+
+            tbody.innerHTML = records.map(record => `
+                <tr class="hover:bg-gray-50 transition-colors duration-200">
+                    <td class="py-3 px-4 text-right">${record.الاسم || '—'}</td>
+                    <td class="py-3 px-4 text-right">${record.القسم || '—'}</td>
+                    <td class="py-3 px-4 text-right">${record.نوع_العقوبة || '—'}</td>
+                    <td class="py-3 px-4 text-right">${record.التاريخ || '—'}</td>
+                    <td class="py-3 px-4 text-right">${record.سبب_العقوبة || '—'}</td>
+                    <td class="py-3 px-4 text-right">${record.المدير || '—'}</td>
+                    <td class="py-3 px-4 text-right">${record.ملاحظة_الغرامة || '—'}</td>
+                    <td class="py-3 px-4 text-right font-bold text-red-600">${(Number(record.المجموع) || 0).toLocaleString('ar-IQ', { style: 'currency', currency: 'IQD' })}</td>
+                </tr>
+            `).join('');
+
+            // حساب وعرض المجموع
+            calculateAndDisplayTotal(records);
+        }
+
+        /**
+         * وظيفة لحساب المجموع الكلي لعمود "قيمة الغرامة" وعرضه في tfoot.
+         * @param {Array<Object>} records - مصفوفة كائنات العقوبات لحساب المجموع منها.
+         */
+        function calculateAndDisplayTotal(records) {
+            const tfoot = document.getElementById('tfoot');
+            let totalFine = 0;
+
+            records.forEach(record => {
+                const fineValue = Number(record.المجموع) || 0;
+                totalFine += fineValue;
+            });
+
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="7" class="py-3 px-4 text-right">المجموع الكلي للغرامات:</td>
+                    <td class="py-3 px-4 text-right">${totalFine.toLocaleString('ar-IQ', { style: 'currency', currency: 'IQD' })}</td>
+                </tr>
+            `;
+        }
+
+        function clearTable() {
+            penaltiesData = [];
+            showEmptyOrErrorState('تم مسح جميع البيانات بنجاح.', false);
+            document.getElementById('search').value = '';
+            document.getElementById('deptFilter').value = '';
+            displayCustomMessage('تم مسح جميع البيانات بنجاح.', 'info');
+        }
+
+        function filterTable() {
+            const searchTerm = document.getElementById('search').value.toLowerCase().trim();
+            const departmentFilter = document.getElementById('deptFilter').value;
+
+            const filteredData = penaltiesData.filter(record => {
+                const matchesDepartment = departmentFilter === '' || (record.القسم && record.القسم === departmentFilter);
+                const matchesSearch =
+                    (record.الاسم && record.الاسم.toLowerCase().includes(searchTerm)) ||
+                    (record.المدير && record.المدير.toLowerCase().includes(searchTerm)) ||
+                    (record.سبب_العقوبة && record.سبب_العقوبة.toLowerCase().includes(searchTerm));
+                
+                return matchesDepartment && matchesSearch;
+            });
+            renderTable(filteredData);
+        }
+
+        function downloadExcel() {
+            if (penaltiesData.length === 0) {
+                displayCustomMessage('لا توجد بيانات لتنزيلها.', 'danger');
+                return;
+            }
+
+            try {
+                let csvContent = "data:text/csv;charset=utf-8,";
+                
+                const header = ['اسم الموظف', 'القسم', 'نوع العقوبة', 'التاريخ', 'سبب العقوبة', 'المدير', 'ملاحظة الغرامة', 'قيمة الغرامة'];
+                
+                // Quote all headers to handle spaces/special characters
+                csvContent += header.map(h => `"${h}"`).join(",") + "\r\n";
+                
+                const rows = penaltiesData.map(record => [
+                    record.الاسم,
+                    record.القسم,
+                    record.نوع_العقوبة,
+                    record.التاريخ,
+                    record.سبب_العقوبة,
+                    record.المدير,
+                    record.ملاحظة_الغرامة,
+                    (Number(record.المجموع) || 0).toLocaleString('ar-IQ', { style: 'currency', currency: 'IQD' })
+                ].map(item => `"${(item || '').toString().replace(/"/g, '""')}"`)); // Handle quotes in data
+
+                csvContent += rows.map(row => row.join(',')).join('\n');
+                
+                const blob = new Blob(['\uFEFF' + csvContent], {
+                    type: 'text/csv;charset=utf-8;'
+                });
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'عقوبات_الموظفين.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                displayCustomMessage('تم تصدير البيانات بنجاح.', 'success');
+            } catch (error) {
+                console.error("Error exporting data:", error);
+                displayCustomMessage('حدث خطأ أثناء تصدير البيانات.', 'danger');
+            }
+        }
+
+        // Initial fetch
+        fetchData();
+    </script>
+</body>
+</html>
