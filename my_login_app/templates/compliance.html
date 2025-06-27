@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>التزام قادة العصر الذكي</title>
+    <!-- تضمين Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- SheetJS (xlsx) for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* تعريف الخط الأساسي للتطبيق */
+        body {
+            font-family: 'Cairo', sans-serif;
+            @apply bg-gray-100 text-gray-800; /* Default light mode colors */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Dark mode styles using Tailwind's `dark:` prefix or by adding a `dark` class to html/body */
+        html.dark {
+            --tw-bg-opacity: 1;
+            background-color: #0f172a; /* Slate 900 */
+            color: #f8fafc; /* Slate 50 */
+        }
+        html.dark .bg-white {
+            background-color: #1e293b; /* Slate 800 */
+        }
+        html.dark .text-gray-800 {
+            color: #f8fafc;
+        }
+        html.dark .text-gray-600 {
+            color: #cbd5e0; /* Slate 300 */
+        }
+        html.dark .border-gray-200 {
+            border-color: #334155; /* Slate 700 */
+        }
+        html.dark input, html.dark select {
+            background-color: #1e293b;
+            border-color: #334155;
+            color: #f8fafc;
+        }
+        html.dark table thead th {
+            background-color: rgba(59, 130, 246, 0.2); /* Blue 500 with opacity */
+        }
+        html.dark table tbody tr:nth-child(even) {
+            background-color: #1e293b; /* Darker even rows */
+        }
+        html.dark table tbody tr:hover {
+            background-color: #334155; /* Slate 700 on hover */
+        }
+        html.dark .empty-state p, html.dark .empty-state i {
+            color: #94a3b8; /* Slate 400 */
+        }
+        /* Specific compliance status colors for dark mode */
+        html.dark .status-مبطل { @apply text-red-400; } /* Light red */
+        html.dark .status-بعده { @apply text-emerald-400; } /* Light green */
+        
+        /* Common styles for buttons and inputs */
+        .btn {
+            @apply px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition duration-300 ease-in-out transform hover:-translate-y-0.5 shadow-md;
+        }
+        .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700; }
+        .btn-success { @apply bg-emerald-500 text-white hover:bg-emerald-600; }
+        .btn-accent { @apply bg-amber-500 text-white hover:bg-amber-600; }
+        .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
+        .btn-outline { @apply bg-transparent border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white; }
+        
+        /* Loading Spinner */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            border: 4px solid rgba(59, 130, 246, 0.2);
+            border-top: 4px solid #3b82f6; /* Primary blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Flash message styles (consistent with other pages) */
+        .flash-messages {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 90%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .flash {
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            animation: fadeInOut 0.5s forwards;
+        }
+        .flash.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .flash.danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .flash.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        @keyframes fadeInOut {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Status Styling */
+        .status-مبطل { @apply text-red-600 font-bold; } /* Red */
+        .status-بعده { @apply text-emerald-600 font-bold; } /* Green */
+        /* Fallback for unknown status */
+        .status-unknown { @apply text-gray-500 font-normal; }
+
+        /* Table Reflow for small screens */
+        @media (max-width: 768px) {
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            tr {
+                @apply mb-4 border border-gray-200 rounded-lg shadow-sm overflow-hidden;
+            }
+            td {
+                @apply border-b border-gray-200 relative text-left py-2 px-4;
+                white-space: normal; /* Allow text wrapping */
+            }
+            td:last-child { @apply border-b-0; }
+            td:before {
+                @apply absolute right-4 top-1/2 -translate-y-1/2 font-bold text-blue-600 w-1/3 text-right; /* Label on the right for RTL */
+                content: attr(data-label);
+            }
+            .controls { @apply grid-cols-1; }
+        }
+
+        @media (max-width: 480px) {
+            h1 { @apply text-2xl; }
+            .header-actions { @apply top-3 right-3 gap-2; }
+            .header-action-btn { @apply w-10 h-10 text-base; }
+            .controls { @apply p-4 gap-3; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Flash messages container -->
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-blue-400 p-6 shadow-lg rounded-b-3xl relative">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-white text-3xl font-bold text-shadow-md">
+                <i class="fas fa-chart-line ml-2"></i> التزام قادة العصر الذكي
+            </h1>
+            <div class="flex space-x-4">
+                <!-- زر تبديل الوضع الليلي -->
+                <button onclick="toggleDarkMode()" class="bg-white bg-opacity-20 hover:bg-opacity-30 p-3 rounded-full text-white transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                    <i class="fas fa-moon" id="dark-mode-icon"></i>
+                </button>
+                <!-- زر تسجيل الخروج -->
+                <button onclick="logout()" class="bg-white bg-opacity-20 hover:bg-opacity-30 p-3 rounded-full text-white transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto p-6 md:p-10">
+        <div class="bg-white rounded-xl shadow-xl p-6 mb-6 border border-gray-200">
+            <div class="controls grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <button class="btn btn-primary col-span-1" onclick="fetchData()">
+                    <i class="fas fa-sync-alt"></i> <span>تحديث البيانات</span>
+                </button>
+                <button class="btn btn-success col-span-1" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel"></i> <span>تصدير لإكسل</span>
+                </button>
+                <input type="text" id="search" placeholder="ابحث بالاسم..." oninput="filterTable()"
+                       class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 focus:ring-blue-500 focus:border-blue-500 col-span-1"/>
+                <select id="statusFilter" onchange="filterTable()"
+                        class="p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 focus:ring-blue-500 focus:border-blue-500 col-span-1">
+                    <option value="">كل الحالات</option>
+                    <option value="مبطل">مبطل</option>
+                    <option value="بعده">بعده</option>
+                </select>
+                <button class="btn btn-primary col-span-full" onclick="window.location.href='{{ url_for('dashboard') }}'">
+                    <i class="fas fa-arrow-right"></i> رجوع للوحة التحكم
+                </button>
+            </div>
+
+            <div class="table-container rounded-lg shadow-md border border-gray-200 overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-blue-50">
+                        <tr>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">اسم الموظف</th>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">الحالة</th>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">نسبة الالتزام</th>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">سبب عدم الالتزام</th>
+                            <th class="py-3 px-4 text-right text-xs font-bold text-blue-600 uppercase tracking-wider">سبب ترك العمل</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody" class="bg-white divide-y divide-gray-200">
+                        <!-- Initial loading state -->
+                        <tr>
+                            <td colspan="5" class="text-center py-8">
+                                <div class="spinner mx-auto"></div>
+                                <p class="text-gray-500 mt-2">جاري تحميل البيانات...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white p-4 text-center mt-auto">
+        <p>جميع الحقوق محفوظة &copy; <span id="year"></span> | لشركة العصر الذكي</p>
+    </footer>
+
+    <script>
+        // دالة لعرض الرسائل المخصصة (Flash Messages)
+        function displayCustomMessage(message, category = 'info') {
+            const flashContainer = document.querySelector('.flash-messages');
+            if (flashContainer) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `flash ${category}`;
+                messageDiv.textContent = message;
+                flashContainer.appendChild(messageDiv);
+                // إزالة الرسالة بعد 5 ثوانٍ
+                setTimeout(() => {
+                    messageDiv.remove();
+                }, 5000); 
+            }
+        }
+
+        // Dark Mode Toggle
+        const darkModeIcon = document.getElementById("dark-mode-icon");
+        // Apply dark mode preference on load
+        const savedDarkMode = localStorage.getItem("darkMode") === "true";
+        if (savedDarkMode) {
+            document.documentElement.classList.add("dark"); 
+            darkModeIcon.classList.remove("fa-moon");
+            darkModeIcon.classList.add("fa-sun");
+        } else {
+            darkModeIcon.classList.remove("fa-sun");
+            darkModeIcon.classList.add("fa-moon");
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle("dark");
+            localStorage.setItem("darkMode", isDark);
+            if (isDark) {
+                darkModeIcon.classList.remove("fa-moon");
+                darkModeIcon.classList.add("fa-sun");
+            } else {
+                darkModeIcon.classList.remove("fa-sun");
+                darkModeIcon.classList.add("fa-moon");
+            }
+        }
+
+        // Logout function
+        function logout() {
+            window.location.href = "{{ url_for('logout') }}";
+        }
+
+        document.getElementById("year").textContent = new Date().getFullYear();
+
+        let allData = [];
+        const tbody = document.getElementById('tbody');
+
+        function showLoadingState() {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-8">
+                        <div class="spinner mx-auto"></div>
+                        <p class="text-gray-500 mt-2">جاري تحميل البيانات...</p>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function showEmptyOrErrorState(message, isError = false) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-8 text-gray-500">
+                        <i class="fas ${isError ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle'} text-3xl mb-3"></i>
+                        <p class="text-lg mb-4">${message}</p>
+                        <button class="btn btn-primary" onclick="fetchData()">
+                            <i class="fas fa-sync-alt"></i> المحاولة مرة أخرى
+                        </button>
+                        <button class="btn btn-outline" onclick="clearTable()">
+                            <i class="fas fa-times"></i> مسح الفلاتر
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Script URL for Google Sheets data (ensure this is the correct URL for compliance data)
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzSyFE4fTWW78EBt3srTLDzGpPBSXlLPlDgFxrHEc3Z6BsYMnD-ZKIczml3RaTG6V5Y6g/exec?sheet=التزام القادة';
+
+        async function fetchData() {
+            showLoadingState();
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) {
+                    throw new Error(`خطأ في الاتصال بالشبكة: ${res.status}`);
+                }
+                const json = await res.json();
+                if (!json.success) {
+                    throw new Error(json.error || 'فشل جلب البيانات من السيرفر.');
+                }
+                allData = json.data;
+                if (!allData.length) {
+                    showEmptyOrErrorState('لا توجد بيانات التزام قادة لعرضها حالياً.', false);
+                } else {
+                    renderTable(allData);
+                }
+                displayCustomMessage('تم تحديث البيانات بنجاح.', 'success');
+            } catch (err) {
+                showEmptyOrErrorState(`فشل تحميل البيانات: ${err.message}.`, true);
+                displayCustomMessage(`فشل تحميل البيانات: ${err.message}.`, 'danger');
+                console.error('خطأ في جلب البيانات:', err);
+            }
+        }
+
+        function renderTable(data) {
+            if (data.length === 0) {
+                showEmptyOrErrorState('لا توجد نتائج مطابقة للبحث.', false);
+                return;
+            }
+            tbody.innerHTML = data.map(item => {
+                const statusClass = item.مبطل_او_بعده ? 'status-' + String(item.مبطل_او_بعده).replace(/ /g, '_') : 'status-unknown';
+                return `
+                    <tr class="hover:bg-gray-50 transition-colors duration-200">
+                        <td data-label="اسم الموظف" class="py-3 px-4">${item.اسم_الموظف || '—'}</td>
+                        <td data-label="الحالة" class="py-3 px-4 ${statusClass}">${item.مبطل_او_بعده || '—'}</td>
+                        <td data-label="نسبة الالتزام" class="py-3 px-4">${item.نسبة_الالتزام || '—'}</td>
+                        <td data-label="سبب عدم الالتزام" class="py-3 px-4">${item.سبب_عدم_الالتزام || '—'}</td>
+                        <td data-label="سبب ترك العمل" class="py-3 px-4">${item.سبب_ترك_العمل || '—'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterTable() {
+            const searchTerm = document.getElementById('search').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            const filtered = allData.filter(item => {
+                const nameMatch = item.اسم_الموظف && item.اسم_الموظف.toLowerCase().includes(searchTerm);
+                const statusMatch = !statusFilter || (item.مبطل_او_بعده && item.مبطل_او_بعده === statusFilter);
+                return nameMatch && statusMatch;
+            });
+            
+            renderTable(filtered);
+        }
+
+        function exportToExcel() {
+            if (allData.length === 0) {
+                displayCustomMessage('لا توجد بيانات لتصديرها.', 'danger');
+                return;
+            }
+
+            try {
+                const headers = ['اسم الموظف', 'الحالة', 'نسبة الالتزام', 'سبب عدم الالتزام', 'سبب ترك العمل'];
+                const data = allData.map(item => [
+                    item.اسم_الموظف || '',
+                    item.مبطل_او_بعده || '',
+                    item.نسبة_الالتزام || '',
+                    item.سبب_عدم_الالتزام || '',
+                    item.سبب_ترك_العمل || ''
+                ]);
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+                
+                // Set column widths for better readability in Excel
+                ws['!cols'] = [
+                    {wch: 25}, {wch: 15}, {wch: 15},
+                    {wch: 30}, {wch: 30}
+                ];
+
+                XLSX.utils.book_append_sheet(wb, ws, 'التزام القادة');
+                XLSX.writeFile(wb, `التزام_القادة_${new Date().toISOString().slice(0,10)}.xlsx`);
+                displayCustomMessage('تم تصدير البيانات بنجاح.', 'success');
+            } catch (error) {
+                console.error("Error exporting data:", error);
+                displayCustomMessage('حدث خطأ أثناء تصدير البيانات.', 'danger');
+            }
+        }
+
+        function clearTable() {
+            allData = [];
+            showEmptyOrErrorState('تم مسح البيانات مؤقتاً. اضغط على "تحديث البيانات" لإعادة التحميل.', false);
+            document.getElementById('search').value = '';
+            document.getElementById('statusFilter').value = '';
+            displayCustomMessage('تم مسح جميع البيانات بنجاح.', 'info');
+        }
+
+        // Initial fetch
+        fetchData();
+    </script>
+</body>
+</html>
